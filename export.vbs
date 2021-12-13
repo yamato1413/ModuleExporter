@@ -69,6 +69,9 @@ val_trust = wsh.RegRead("HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\
 '// これをしないとVBProjectにアクセスできない
 wsh.RegWrite "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\Security\AccessVBOM", 1, "REG_DWORD"
 
+
+Dim Application
+Set Application = Nothing
 For Each arg In args.Items
     '// 引数のファイルパスを絶対パスに整形
     arg = Replace(arg, "/", "\")
@@ -77,11 +80,11 @@ For Each arg In args.Items
         arg = GetAbsolutePathNameEx(CreateObject("WScript.Shell").CurrentDirectory, arg)
     End If
 
-    Dim wb
-    Dim Application
+    
     WScript.Echo "起動待機中..."
+    Dim wb
     Set wb = WScript.GetObject(arg)
-    Set Application = wb.Parent
+    If Application Is Nothing Then Set Application = wb.Parent
 
     '// マクロが有効化されておらずVBAプロジェクトの取得に失敗するかどうかをチェックする
     On Error Resume Next
@@ -128,10 +131,9 @@ For Each arg In args.Items
             End If
         Next
     End If
-    Set Application = Nothing
     Set wb = Nothing
 Next
-
+Set Application = Nothing
 '// 「VBAプロジェクトオブジェクトモデルへのアクセスを信頼する」をもとの設定値に戻す
 wsh.RegWrite "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\Security\AccessVBOM", val_trust, "REG_DWORD"
 WScript.Echo "Done!"
