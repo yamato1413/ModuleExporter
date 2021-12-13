@@ -41,24 +41,12 @@ End If
 Dim fso
 Set fso = Createobject("Scripting.FileSystemObject")
 Dim args
-Set args = CreateObject("Scripting.Dictionary")
+Set args = ArgCheck()
 
 Dim type_export
 type_export = EXP_ALL
 
-For Each arg In WScript.Arguments
-    '// オプション引数をチェックして出力するモジュールを選択する
-    If Left(arg, 1) = "-" And Len(arg) <> 1 Then
-        type_export = 0
-        If InStr(arg, "s") Then type_export = type_export Or EXP_STANDARD
-        If InStr(arg, "c") Then type_export = type_export Or EXP_CLASS
-        If InStr(arg, "u") Then type_export = type_export Or EXP_USERFORM
-        If InStr(arg, "o") Then type_export = type_export Or EXP_OBJ
-        If InStr(arg, "a") Then type_export = type_export Or EXP_ALL
-    End If
-    '// 引数にエクセルファイル以外が混じってたら取り除く
-    If Left(fso.GetExtensionName(arg), 2) = "xl" Then args.Add args.Count, arg
-Next
+
 
 Dim wsh
 Set wsh = CreateObject("WScript.Shell")
@@ -86,21 +74,18 @@ For Each arg In args.Items
     Set wb = WScript.GetObject(arg)
     If Application Is Nothing Then Set Application = wb.Parent
 
+    
     '// マクロが有効化されておらずVBAプロジェクトの取得に失敗するかどうかをチェックする
-    On Error Resume Next
-    Dim isErr
-    isErr = false
     Dim vbps
-    Set vbps = Application.VBE.VBProjects
-    If Err Then isErr = True
-    On Error Goto 0
+    Dim isErr
+    isErr = GetVBProjects(vbps) '// ByRef引数なのでvbpsが書き換わる
 
     If isErr Then
         MsgBox "このブックはマクロが有効化されていません。" & vbNewLine & _ 
                "手動で開いて「コンテンツを有効化」をクリックしてください。" & vbNewLine & _
                "ブック名:" & wb.Name, vbExclamation,"エラー"
-    Else
 
+    Else
         '// アドインファイルや個人用マクロを設定していたり，既にエクセルを開いていたりすると
         '// 複数のVBProjectが取得されるので，目的のエクセルファイルのVBProjectを探す
         Dim vbp
@@ -140,6 +125,33 @@ WScript.Echo "Done!"
 WScript.Sleep 1000
 WScript.Quit
 
+
+Function ArgCheck()
+    Dim args
+    Set args = CreateObject("Scripting.Dictionary")
+    For Each arg In WScript.Arguments
+        '// オプション引数をチェックして出力するモジュールを選択する
+        If Left(arg, 1) = "-" And Len(arg) <> 1 Then
+            type_export = 0
+            If InStr(arg, "s") Then type_export = type_export Or EXP_STANDARD
+            If InStr(arg, "c") Then type_export = type_export Or EXP_CLASS
+            If InStr(arg, "u") Then type_export = type_export Or EXP_USERFORM
+            If InStr(arg, "o") Then type_export = type_export Or EXP_OBJ
+            If InStr(arg, "a") Then type_export = type_export Or EXP_ALL
+        End If
+        '// 引数にエクセルファイル以外が混じってたら取り除く
+        If Left(fso.GetExtensionName(arg), 2) = "xl" Then args.Add args.Count, arg
+    Next
+    Set ArgCheck = args
+End Function
+
+Function GetVBProjects(ByRef ref_vbps)
+    GetVBProjects = 0
+    On Error Resume Next
+    Set ref_vbps = Application.VBE.VBProjects
+    If Err Then GetVBProjects = 1
+    On Error Goto 0
+End Function
 
 Function GetExtension(m)
     Select Case m.Type
